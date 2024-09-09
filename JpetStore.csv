@@ -1,0 +1,3 @@
+username,Password,categoryId,ZipPostalCode,FirstName,LastName,CreditCardType,CardNumber,order.expiryDate,CardCode,order.billAddress1,order.billAddress2,order.billCity,order.billState,order.billCountry
+sreyajit,1234,DOGS,721656,Sreyajit,Mondal,Visa,2345654786954321234,12/03,234,kolkata,kolkata,Haldia,West Bangal,India
+sreyajit67@gmail.com,sreyajit123,CATS,700102,Chayan,Mondal,Master card,2345667874552889234,23/04,432,Medinipur,Medinipur,kestopur,West Bangal,India
