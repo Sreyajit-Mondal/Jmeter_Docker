@@ -1,0 +1,70 @@
+# GitHub Actions workflow to run Azure Load Test
+name: Run Azure Load Test
+
+on:
+  # Workflow can be triggered manually from GitHub Actions UI
+  workflow_dispatch:
+
+permissions:
+  # Required for Azure OIDC login and reading repo content
+  id-token: write
+  contents: read
+
+jobs:
+  loadTest:
+    name: Load Test
+    # Runner environment (internal runner set up by TCOE team)
+    runs-on: internal
+    environment: dev
+
+    steps:
+      # Step 1: Pull code from GitHub repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Authenticate to Azure using GitHub OIDC
+      - name: Log in to Azure with OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Step 4: Download test data (CSV) from Azure Blob Storage (private storage account)
+      - name: Download test data from Blob Storage
+        run: |
+          az storage blob download \
+            --account-name saperformancejmeter \
+            --container-name jmeter \
+            --name ContractNumber.csv \
+            --file ContractNumber.csv \
+            --auth-mode login
+
+      # Step 5: Dynamically create Azure Load Testing config file
+      # - Defines test plan (JMX file)
+      # - Passes environment variables from Key Vault
+      # - Links the test data file
+      - name: Generate loadtest-config.yaml dynamically
+        run: |
+          cat <<EOF > loadtest-config.yaml
+          version: v0.1
+          testType: JMX
+          testId: dealerSource-ui-test-${{ github.run_id }}
+          displayName: DealerSource UI Load Test
+          testPlan: "Scripts/Dealer Source_Post-Stage_Azure1.jmx"
+          description: 'Demo Load test for DealerSource'
+          engineInstances: 1
+          splitAllCSVs: true
+          configurationFiles:
+            - "ContractNumber.csv"
+          EOF
+
+      # Step 7: Execute Azure Load Test using the generated config
+      # - Runs the JMeter test in Azure Load Testing service
+      # - Uses the test data and secrets securely
+      - name: Run Azure Load Test
+        uses: azure/load-testing@v1.1.24
+        with:
+          loadTestConfigFile: "loadtest-config.yaml"
+          loadTestResource: "azure-ld-testing"
+          resourceGroup: "rg-to-dev-performance_testing-jmeter-a"
